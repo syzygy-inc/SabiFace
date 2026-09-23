@@ -9,6 +9,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  # 純 Rust: 参照環境が無いテストは skip される
   test:
     runs-on: ubuntu-latest
     steps:
@@ -22,5 +23,23 @@ jobs:
       - name: Clippy
         run: cargo clippy --workspace --all-targets -- -D warnings
       - name: Test
-        # TeX Live の oracle（tftopl, uptftopl, kpsewhich）と cm-super の PFB が無い環境では該当テストは skip される
+        run: cargo test --workspace
+
+  # 参照環境あり: TeX Live の tftopl / uptftopl / vftovp とフォントを導入し、skip を失敗にして oracle を必ず実行する
+  oracle:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install TeX Live
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-binaries texlive-base texlive-fonts-recommended texlive-lang-japanese lmodern
+          kpsewhich cmr10.tfm cmr10.pfb cmr10.afm jis.tfm upjisr-h.tfm ptmr7t.vf 8r.enc pdftex.map kanjix.map lmr10.pfb
+          which tftopl uptftopl vftovp
+      - name: Test (strict)
+        env:
+          SABI_STRICT_TESTS: "1"
         run: cargo test --workspace
