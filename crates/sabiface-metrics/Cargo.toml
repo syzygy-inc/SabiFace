@@ -1,0 +1,9 @@
+[package]
+name = "sabiface-metrics"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "TeX font metrics and encodings: TFM, JFM, VF, AFM, PostScript .enc"
+
+[dependencies]

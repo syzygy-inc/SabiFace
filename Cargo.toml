@@ -1,0 +1,12 @@
+[workspace]
+resolver = "2"
+members = ["crates/sabiface-metrics", "crates/sabiface-glyph", "crates/sabiface-map"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "AGPL-3.0-only"
+repository = "https://github.com/syzygy-inc/SabiFace"
+
+[workspace.dependencies]
+ttf-parser = { version = "0.25", default-features = false, features = ["std", "opentype-layout", "glyph-names"] }
