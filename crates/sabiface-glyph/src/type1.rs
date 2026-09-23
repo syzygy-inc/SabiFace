@@ -170,16 +170,19 @@ impl Type1Font {
         let font_matrix = extract_matrix(&clear).unwrap_or([0.001, 0.0, 0.0, 0.001, 0.0, 0.0]);
         let encoding = extract_encoding(&clear);
         let private = decrypt(&binary, EEXEC_R, 4);
-        let len_iv = find(&private, b"/lenIV")
-            .map(|i| {
-                Lexer {
-                    s: &private,
-                    pos: i + 6,
-                }
-                .int()
-                .unwrap_or(4) as usize
-            })
-            .unwrap_or(4);
+        // lenIV: 復号後に捨てる先頭バイト数。-1 は「charstring を暗号化しない」（黒本 §7.2）
+        let len_iv = match find(&private, b"/lenIV").and_then(|i| {
+            Lexer {
+                s: &private,
+                pos: i + 6,
+            }
+            .int()
+        }) {
+            None => Some(4),
+            Some(-1) => None,
+            Some(n) if (0..=255).contains(&n) => Some(n as usize),
+            Some(n) => return gerr(format!("bad lenIV {n}")),
+        };
         let subrs = parse_subrs(&private, len_iv);
         let (charstrings, glyph_names) = parse_charstrings(&private, len_iv)?;
         Ok(Type1Font {
@@ -291,7 +294,15 @@ fn extract_encoding(clear: &[u8]) -> Vec<Option<String>> {
 }
 
 /// `dup <i> <len> RD <bin> NP` の列
-fn parse_subrs(private: &[u8], len_iv: usize) -> Vec<Vec<u8>> {
+/// charstring の復号。`len_iv` が None なら暗号化されていない
+fn charstring(data: &[u8], len_iv: Option<usize>) -> Vec<u8> {
+    match len_iv {
+        Some(skip) => decrypt(data, CHARSTRING_R, skip),
+        None => data.to_vec(),
+    }
+}
+
+fn parse_subrs(private: &[u8], len_iv: Option<usize>) -> Vec<Vec<u8>> {
     let Some(i) = find(private, b"/Subrs") else {
         return Vec::new();
     };
@@ -320,7 +331,7 @@ fn parse_subrs(private: &[u8], len_iv: usize) -> Vec<Vec<u8>> {
             break;
         }
         if (idx as usize) < count {
-            subrs[idx as usize] = decrypt(&private[start..end], CHARSTRING_R, len_iv);
+            subrs[idx as usize] = charstring(&private[start..end], len_iv);
         }
         pos = end;
     }
@@ -330,7 +341,7 @@ fn parse_subrs(private: &[u8], len_iv: usize) -> Vec<Vec<u8>> {
 /// `/<name> <len> RD <bin> ND` の列
 type CharStrings = (HashMap<String, Vec<u8>>, Vec<String>);
 
-fn parse_charstrings(private: &[u8], len_iv: usize) -> Result<CharStrings, GlyphError> {
+fn parse_charstrings(private: &[u8], len_iv: Option<usize>) -> Result<CharStrings, GlyphError> {
     let i = find(private, b"/CharStrings").ok_or_else(|| GlyphError {
         message: "no /CharStrings".into(),
     })?;
@@ -366,10 +377,7 @@ fn parse_charstrings(private: &[u8], len_iv: usize) -> Result<CharStrings, Glyph
         if end > private.len() {
             return gerr(format!("charstring {name} runs past end"));
         }
-        map.insert(
-            name.clone(),
-            decrypt(&private[start..end], CHARSTRING_R, len_iv),
-        );
+        map.insert(name.clone(), charstring(&private[start..end], len_iv));
         names.push(name);
         pos = end;
         if names.len() >= count && count > 0 {

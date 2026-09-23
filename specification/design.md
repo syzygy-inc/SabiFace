@@ -46,4 +46,5 @@ Sabi 系列の分担:
 
 - メトリクス: TeX Live の `tftopl` / `uptftopl` / `vftovp` の PL / VPL 出力と、こちらの解析結果を数値で比較する。
 - Type1: AMS Computer Modern の `.afm` の境界箱（`B llx lly urx ury`）と、輪郭から計算した厳密な境界箱（三次曲線の極値を含む）を比較する。
-- テストは TeX Live のファイルを `kpsewhich` で探し、無ければ飛ばす。
+- テストは TeX Live のファイルを `kpsewhich` で探し、無ければ飛ばす。環境変数 `SABI_STRICT_TESTS` を設定すると、飛ばす代わりに失敗にする（参照環境を必須にする CI 用）。
+- Type1 の `lenIV`（-1 = 非暗号化、0〜255）は外部フォントに依存しない合成 PFB で検査する（`tests/type1_synthetic.rs`）。

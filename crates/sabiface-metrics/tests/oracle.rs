@@ -68,7 +68,7 @@ fn assert_close(a: f64, b: f64, what: &str) {
 #[test]
 fn tfm_matches_tftopl_for_cmr10() {
     let Some(path) = kpsewhich("cmr10.tfm") else {
-        eprintln!("skipped: cmr10.tfm not found");
+        skip("cmr10.tfm not found");
         return;
     };
     let tfm = Tfm::parse(&std::fs::read(&path).unwrap()).unwrap();
@@ -89,7 +89,7 @@ fn tfm_matches_tftopl_for_cmr10() {
         other => panic!("expected kern, got {other:?}"),
     }
     let Some(pl) = tool("tftopl", &[path.to_str().unwrap()]) else {
-        eprintln!("skipped: tftopl not available");
+        skip("tftopl not available");
         return;
     };
     let chars = pl_char_props(&pl);
@@ -133,7 +133,7 @@ fn jfm_matches_uptftopl() {
         ("upjisr-v.tfm", Direction::Tate),
     ] {
         let Some(path) = kpsewhich(name) else {
-            eprintln!("skipped: {name} not found");
+            skip(&format!("{name} not found"));
             continue;
         };
         let jfm = Jfm::parse(&std::fs::read(&path).unwrap()).unwrap();
@@ -189,7 +189,7 @@ fn vf_parses_a_psnfss_virtual_font() {
     // ptmr7t.vf（psnfss の Times, T1）が代表。無ければ他の VF を探す
     let candidates = ["ptmr7t.vf", "ptmr8t.vf", "ptmr8c.vf", "ecrm1000.vf"];
     let Some(path) = candidates.iter().find_map(|n| kpsewhich(n)) else {
-        eprintln!("skipped: no VF found");
+        skip("no VF found");
         return;
     };
     let vf = Vf::parse(&std::fs::read(&path).unwrap()).unwrap();
@@ -223,4 +223,12 @@ fn enc_parses_8r_and_ec() {
     assert_eq!(std.glyph_name(0o47), Some("quoteright"));
     assert_eq!(std.glyph_name(0o256), Some("fi"));
     assert_eq!(std.glyph_name(0), None);
+}
+
+/// 参照環境（TeX Live、フォント）が無いときは飛ばす。`SABI_STRICT_TESTS` が設定されていれば失敗にする
+fn skip(reason: &str) {
+    if std::env::var_os("SABI_STRICT_TESTS").is_some() {
+        panic!("required reference environment is missing: {reason}");
+    }
+    eprintln!("skipped: {reason}");
 }

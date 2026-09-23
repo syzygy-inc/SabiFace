@@ -16,7 +16,7 @@ fn kpsewhich(name: &str) -> Option<std::path::PathBuf> {
 
 fn check_font(pfb: &str, afm: &str) -> Option<(usize, usize)> {
     let (Some(pfb_path), Some(afm_path)) = (kpsewhich(pfb), kpsewhich(afm)) else {
-        eprintln!("skipped: {pfb} / {afm} not found");
+        skip(&format!("{pfb} / {afm} not found"));
         return None;
     };
     let font = Type1Font::parse(&std::fs::read(&pfb_path).unwrap()).unwrap();
@@ -93,7 +93,7 @@ fn seac_composites_in_a_text_font() {
         .iter()
         .find_map(|n| kpsewhich(n))
     else {
-        eprintln!("skipped: no seac-using font found");
+        skip("no seac-using font found");
         return;
     };
     let font = Type1Font::parse(&std::fs::read(&path).unwrap()).unwrap();
@@ -107,4 +107,12 @@ fn seac_composites_in_a_text_font() {
             );
         }
     }
+}
+
+/// 参照環境（TeX Live、フォント）が無いときは飛ばす。`SABI_STRICT_TESTS` が設定されていれば失敗にする
+fn skip(reason: &str) {
+    if std::env::var_os("SABI_STRICT_TESTS").is_some() {
+        panic!("required reference environment is missing: {reason}");
+    }
+    eprintln!("skipped: {reason}");
 }
