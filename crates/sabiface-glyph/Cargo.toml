@@ -11,3 +11,4 @@ ttf-parser = { workspace = true }
 
 [dev-dependencies]
 sabiface-metrics = { path = "../sabiface-metrics" }
+sabiface-qa = { path = "../sabiface-qa" }

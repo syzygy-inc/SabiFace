@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/sabiface-metrics", "crates/sabiface-glyph", "crates/sabiface-map"]
+members = ["crates/sabiface-metrics", "crates/sabiface-glyph", "crates/sabiface-map", "crates/sabiface-qa"]
 
 [workspace.package]
 version = "0.0.1"

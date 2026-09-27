@@ -7,6 +7,7 @@ name = "sabiface-glyph"
 version = "0.0.1"
 dependencies = [
  "sabiface-metrics",
+ "sabiface-qa",
  "ttf-parser",
 ]
 
@@ -16,6 +17,13 @@ version = "0.0.1"
 
 [[package]]
 name = "sabiface-metrics"
+version = "0.0.1"
+dependencies = [
+ "sabiface-qa",
+]
+
+[[package]]
+name = "sabiface-qa"
 version = "0.0.1"
 
 [[package]]

@@ -7,3 +7,6 @@ repository.workspace = true
 description = "TeX font metrics and encodings: TFM, JFM, VF, AFM, PostScript .enc"
 
 [dependencies]
+
+[dev-dependencies]
+sabiface-qa = { path = "../sabiface-qa" }

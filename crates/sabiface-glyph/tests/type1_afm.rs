@@ -1,22 +1,14 @@
-//! Type1 の charstring 解釈器を、AMS Computer Modern の AFM の境界箱で検証する。
+//! Type1 の charstring 解釈器を、AMS Computer Modern の AFM の境界箱と送り幅で検証する。
+//! 各テストは契約 case（`specification/cases.md`）。環境不足は BLOCKED、比較の完了で PASS を台帳に残す。
 
 use sabiface_glyph::type1::Type1Font;
 use sabiface_metrics::afm::Afm;
-use std::process::Command;
+use sabiface_qa::{kpsewhich, Case};
 
-fn kpsewhich(name: &str) -> Option<std::path::PathBuf> {
-    let out = Command::new("kpsewhich").arg(name).output().ok()?;
-    let s = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    if s.is_empty() {
-        None
-    } else {
-        Some(std::path::PathBuf::from(s))
-    }
-}
-
-fn check_font(pfb: &str, afm: &str) -> Option<(usize, usize)> {
+/// 1 フォントの全字形を AFM と比べる。比べた字形数を返す
+fn check_font(case: &Case, pfb: &str, afm: &str) -> Option<usize> {
     let (Some(pfb_path), Some(afm_path)) = (kpsewhich(pfb), kpsewhich(afm)) else {
-        skip(&format!("{pfb} / {afm} not found"));
+        case.blocked(&format!("{pfb} / {afm} not found"));
         return None;
     };
     let font = Type1Font::parse(&std::fs::read(&pfb_path).unwrap()).unwrap();
@@ -58,6 +50,7 @@ fn check_font(pfb: &str, afm: &str) -> Option<(usize, usize)> {
                 }
             }
         }
+        case.compared();
     }
     assert!(
         failures.is_empty(),
@@ -65,54 +58,86 @@ fn check_font(pfb: &str, afm: &str) -> Option<(usize, usize)> {
         failures.len(),
         failures.join("\n")
     );
-    Some((checked, failures.len()))
+    Some(checked)
 }
 
+/// FACE-T1-CMR10
 #[test]
 fn cmr10_outlines_match_afm_bboxes() {
-    if let Some((n, _)) = check_font("cmr10.pfb", "cmr10.afm") {
+    let case = Case::required("FACE-T1-CMR10", &["C-FONT"]);
+    if let Some(n) = check_font(&case, "cmr10.pfb", "cmr10.afm") {
         assert!(n > 100);
+        case.done();
     }
 }
 
+/// FACE-T1-CMMI10
 #[test]
-fn cmmi10_and_cmsy10_outlines_match_afm_bboxes() {
-    check_font("cmmi10.pfb", "cmmi10.afm");
-    check_font("cmsy10.pfb", "cmsy10.afm");
+fn cmmi10_outlines_match_afm_bboxes() {
+    let case = Case::required("FACE-T1-CMMI10", &["C-FONT"]);
+    if check_font(&case, "cmmi10.pfb", "cmmi10.afm").is_some() {
+        case.done();
+    }
 }
 
+/// FACE-T1-CMSY10
+#[test]
+fn cmsy10_outlines_match_afm_bboxes() {
+    let case = Case::required("FACE-T1-CMSY10", &["C-FONT"]);
+    if check_font(&case, "cmsy10.pfb", "cmsy10.afm").is_some() {
+        case.done();
+    }
+}
+
+/// FACE-T1-CMEX10
 #[test]
 fn cmex10_outlines_match_afm_bboxes() {
-    check_font("cmex10.pfb", "cmex10.afm");
+    let case = Case::required("FACE-T1-CMEX10", &["C-FONT"]);
+    if check_font(&case, "cmex10.pfb", "cmex10.afm").is_some() {
+        case.done();
+    }
 }
 
+/// FACE-T1-SEAC: 合成字形（seac）。Latin Modern の Type1 が要る
 #[test]
 fn seac_composites_in_a_text_font() {
-    // cm-super や Latin Modern の Type1 は seac を使う。無ければ飛ばす
+    let case = Case::required("FACE-T1-SEAC", &["C-FONT"]);
     let Some(path) = ["lmr10.pfb", "sfrm1000.pfb"]
         .iter()
         .find_map(|n| kpsewhich(n))
     else {
-        skip("no seac-using font found");
-        return;
+        return case.blocked("no seac-using font (lmr10.pfb / sfrm1000.pfb) found");
     };
     let font = Type1Font::parse(&std::fs::read(&path).unwrap()).unwrap();
     for name in ["Aacute", "eacute", "odieresis"] {
-        if font.has_glyph(name) {
-            let g = font.glyph(name).unwrap();
-            assert!(!g.outline.is_empty(), "{name} should have an outline");
-            assert!(
-                g.outline.bbox().unwrap().ymax > 500.0,
-                "{name} should include the accent"
-            );
-        }
+        assert!(font.has_glyph(name), "{name} should exist in {path:?}");
+        let g = font.glyph(name).unwrap();
+        assert!(!g.outline.is_empty(), "{name} should have an outline");
+        assert!(
+            g.outline.bbox().unwrap().ymax > 500.0,
+            "{name} should include the accent"
+        );
+        case.compared();
     }
+    case.done();
 }
 
-/// 参照環境（TeX Live、フォント）が無いときは飛ばす。`SABI_STRICT_TESTS` が設定されていれば失敗にする
-fn skip(reason: &str) {
-    if std::env::var_os("SABI_STRICT_TESTS").is_some() {
-        panic!("required reference environment is missing: {reason}");
+/// FACE-T1-TRUNCATED: 実フォントの途中で切れた入力は panic ではなく Err（C-RESOURCE）
+#[test]
+fn truncated_pfb_does_not_panic() {
+    let case = Case::required("FACE-T1-TRUNCATED", &["C-RESOURCE"]);
+    let Some(path) = kpsewhich("cmr10.pfb") else {
+        return case.blocked("cmr10.pfb not found");
+    };
+    let data = std::fs::read(path).unwrap();
+    // 全長は 30 KB 程度。素数の歩幅で切る
+    for len in (0..data.len()).step_by(97) {
+        let r = std::panic::catch_unwind(|| {
+            // 途中で切れていても構文として閉じていれば Ok になり得る。panic しないことを確かめる
+            let _ = Type1Font::parse(&data[..len]).map(|f| f.glyph("A").ok());
+        });
+        assert!(r.is_ok(), "PFB truncated at {len} panicked");
+        case.compared();
     }
-    eprintln!("skipped: {reason}");
+    case.done();
 }
