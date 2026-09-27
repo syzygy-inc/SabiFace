@@ -48,6 +48,8 @@ jobs:
             texlive-binaries texlive-base texlive-fonts-recommended texlive-lang-japanese lmodern
           for f in cmr10.tfm cmr10.pfb cmr10.afm jis.tfm upjisr-h.tfm ptmr7t.vf 8r.enc ec.enc pdftex.map kanjix.map lmr10.pfb; do printf '%s: ' "$f"; kpsewhich "$f" || echo "(missing)"; done
           for t in tftopl uptftopl vftovp; do printf '%s: ' "$t"; which "$t" || echo "(missing)"; done
+      - name: Reference resources (lock; required present, digests match the baseline)
+        run: sh scripts/qa-resources.sh check
       - name: Test (strict)
         env:
           SABI_STRICT_TESTS: "1"

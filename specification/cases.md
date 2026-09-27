@@ -31,4 +31,7 @@ PASS / FAIL / BLOCKED / NOT-RUN と比較件数を残す。`scripts/qa-ledger.sh
 
 oracle プロファイルの基準は TeX Live 2025 の配布物。CI は Ubuntu の `texlive-binaries` / `texlive-base` /
 `texlive-fonts-recommended` / `texlive-lang-japanese` / `lmodern` を導入する（`.github/workflows/ci.yml`）。
-版と digest の台帳化は段階 1 の残件。
+各 case が参照するファイルの sha256 は [resources.lock](resources.lock) に固定し、`scripts/qa-resources.sh check` が
+kpsewhich で解決したファイルの digest を照合する（必須資源の不在と digest の相違は失敗。ツールの版は表示のみ）。
+基準を更新するときは手元の TeX Live で `scripts/qa-resources.sh record` を実行し、差分を変更管理に載せる。
+`pdftex.map` / `kanjix.map` は updmap が生成するので digest を固定せず、存在のみ CI の診断で確認する。
