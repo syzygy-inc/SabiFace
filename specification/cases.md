@@ -27,6 +27,12 @@ PASS / FAIL / BLOCKED / NOT-RUN と比較件数を残す。`scripts/qa-ledger.sh
 外部資源に依らない検査（合成 PFB による lenIV、境界箱の解析形状、pdftex.map / kanjix.map の解釈）は
 `cargo test` の単体テストとして常に実行し、台帳には載せない。
 
+## 不正入力 corpus
+
+`crates/sabiface-metrics/tests/malformed.rs`（C-RESOURCE）。手で組んだ最小の TFM / VF / JFM / enc を壊した corpus
+（見出しの不整合、表の外を指す index、途中で切れた入力、許されない命令、entries 数の違い）と、決定的な擬似乱数の塊 300 個 × 3 変種で、
+解析器が panic せず Err を返すことを確かめる。外部資源に依らず常に実行する。Type1 の lenIV と切断は `type1_synthetic.rs` / `type1_afm.rs`。
+
 ## 参照資源のロック
 
 oracle プロファイルの基準は TeX Live 2025 の配布物。CI は Ubuntu の `texlive-binaries` / `texlive-base` /
